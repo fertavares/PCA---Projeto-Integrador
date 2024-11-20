@@ -21,10 +21,9 @@ class PCAAcessibilidade:
     def limpar_data(self):
         if self.data is not None:
             try:
-                
+            
                 self.acessibilidade = self.data[["NO_BAIRRO", "QT_SALAS_UTILIZADAS_ACESSIVEIS", "QT_TUR_ESP"]].dropna().drop_duplicates().reset_index(drop=True)
 
-                
                 self.acessibilidade['NO_BAIRRO_NUMERICO'], categorias = pd.factorize(self.acessibilidade['NO_BAIRRO'])
                 print(self.acessibilidade.head())  
             except KeyError:
@@ -32,17 +31,26 @@ class PCAAcessibilidade:
         
     def calcular_pca(self):
         if hasattr(self, 'acessibilidade'):
+            
             colunas_pca = self.acessibilidade[["NO_BAIRRO_NUMERICO", "QT_SALAS_UTILIZADAS_ACESSIVEIS", "QT_TUR_ESP"]]
 
-            self.pca_pipeline = make_pipeline(StandardScaler(), PCA(n_components=2))
+            self.scaler = StandardScaler()
+            colunas_pca_scaled = self.scaler.fit_transform(colunas_pca)
 
+            self.cov_matriz = np.cov(colunas_pca_scaled, rowvar=False)
+            print("Matriz de Covariância:\n", self.cov_matriz)
+
+            self.eigenvalues, self.eigenvectors = np.linalg.eig(self.cov_matriz)
+            print("Autovalores:\n", self.eigenvalues)
+            print("Autovetores:\n", self.eigenvectors)
+
+            self.pca_pipeline = make_pipeline(StandardScaler(), PCA(n_components=2))
             pca_results = self.pca_pipeline.fit_transform(colunas_pca)
-            
+
             self.pca_df = pd.DataFrame(data=pca_results, columns=['PC1', 'PC2'])
-            
             self.pca_df['NO_BAIRRO_NUMERICO'] = self.acessibilidade['NO_BAIRRO_NUMERICO']
             self.pca_df['NO_BAIRRO'] = self.acessibilidade['NO_BAIRRO']
-            
+
             print(self.pca_df.info())
 
         else:
@@ -62,6 +70,7 @@ class PCAAcessibilidade:
                 s=100
             )
 
+            
             pca = self.pca_pipeline.named_steps['pca']
             coeff = np.transpose(pca.components_)
 
@@ -88,4 +97,3 @@ if __name__ == "__main__":
     pca.limpar_data()
     pca.calcular_pca()
     pca.plot_pca()
-    
